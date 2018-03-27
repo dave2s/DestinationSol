@@ -73,12 +73,17 @@ public class OggMusicManager {
             } else {
                 playMusic(gameMusic.get(0), options);
             }
-        } else {
+        }//if battle music was playing, stop and play gamemusic
+        else if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)){
+            stopMusic();
+            playMusic(gameMusic.get(0), options);
+        }
+        else {
             playMusic(gameMusic.get(0), options);
         }
     }
 
-    public void playBattleMusic(final GameOptions options) {
+    private void playBattleMusic(final GameOptions options) {
 
         //battlemusic playing, continue
         if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
@@ -92,6 +97,18 @@ public class OggMusicManager {
         playMusic(battleMusic.get(0), options);
         currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options)); //check whether this shouldn't rather call outside check for enemies
         //}
+    }
+
+    public void playBattleMusic(final GameOptions options, int weight){
+        //increase queue
+        //if greater than threshold - playBattleMusic - needs check for gameMusic playing - stop and play battleMusic - should be in local playBattleMusic
+    }
+    //weight is to represent (in future updates) the size of the ship that is calling this
+
+    public void stopBattleMusic(final GameOptions options, int weight){
+        //increase queue
+
+        //if less than threshold - playGameMusic - needs check for battleMusic playing - stop and play gameMusic - should be in local playGameMusic
     }
 
     public void playMusic(Music music, GameOptions options) {
