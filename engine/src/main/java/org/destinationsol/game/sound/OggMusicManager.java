@@ -31,6 +31,7 @@ import java.util.List;
 public class OggMusicManager {
     private final Music menuMusic;
     private final List<Music> gameMusic;
+    private final List<Music> battleMusic;
     private Music currentlyPlaying = null;
 
     public OggMusicManager() {
@@ -38,9 +39,12 @@ public class OggMusicManager {
         menuMusic.setLooping(true);
 
         gameMusic = new ArrayList<>();
+        battleMusic = new ArrayList<>();
         gameMusic.add(Assets.getMusic("engine:cimmerianDawn").getMusic());
         gameMusic.add(Assets.getMusic("engine:intoTheDark").getMusic());
         gameMusic.add(Assets.getMusic("engine:spaceTheatre").getMusic());
+        battleMusic.add(Assets.getMusic("engine:battle/defenseLine").getMusic());
+        battleMusic.add(Assets.getMusic("engine:battle/powerBots").getMusic());
     }
 
     /**
@@ -64,7 +68,7 @@ public class OggMusicManager {
             int index = gameMusic.indexOf(currentlyPlaying) + 1;
             if (gameMusic.size() - 1 >= index) {
                 playMusic(gameMusic.get(index), options);
-                currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options));
+                currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options));//check whether this shouldn't rather call outside check for enemies
 
             } else {
                 playMusic(gameMusic.get(0), options);
@@ -74,11 +78,28 @@ public class OggMusicManager {
         }
     }
 
+    public void playBattleMusic(final GameOptions options) {
+
+        //battlemusic playing, continue
+        if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
+            //do nothing
+            return;
+        }//menumusic playing, stop music and start playing new music
+        else if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)){
+            stopMusic();
+        }
+        //else {
+        playMusic(battleMusic.get(0), options);
+        currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options)); //check whether this shouldn't rather call outside check for enemies
+        //}
+    }
+
     public void playMusic(Music music, GameOptions options) {
         currentlyPlaying = music;
         currentlyPlaying.setVolume(options.musicVolumeMultiplier);
         currentlyPlaying.play();
     }
+
 
     /**
      * Stop playing all music.

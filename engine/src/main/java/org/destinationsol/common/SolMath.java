@@ -422,4 +422,5 @@ public class SolMath {
         }
         return whole + "." + dec;
     }
+
 }

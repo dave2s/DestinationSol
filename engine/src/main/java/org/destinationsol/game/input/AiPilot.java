@@ -17,6 +17,7 @@
 package org.destinationsol.game.input;
 
 import com.badlogic.gdx.math.Vector2;
+import org.destinationsol.SolApplication;
 import org.destinationsol.common.SolMath;
 import org.destinationsol.game.Faction;
 import org.destinationsol.game.SolGame;
@@ -95,6 +96,10 @@ public class AiPilot implements Pilot {
                 battle = myDestProvider.shouldManeuver(canShoot, nearestEnemy, nearGround);
             }
             if (battle != null) {
+                //trigger game actions which occur during Hero vs AiPilot battle, triggered by AiPilot
+                if(nearestEnemy.getPilot().isPlayer()){
+                    this.battleWithHeroGameActions(game,ship,nearestEnemy);
+                }
                 dest = myBattleDestProvider.getDest(ship, nearestEnemy, np, battle, game.getTimeStep(), canShootUnfixed, nearGround);
                 shouldStopNearDest = myBattleDestProvider.shouldStopNearDest();
                 destSpeed = nearestEnemy.getSpeed();
@@ -129,6 +134,20 @@ public class AiPilot implements Pilot {
             myReEquipAwait = MAX_RE_EQUIP_AWAIT;
         } else {
             myReEquipAwait -= game.getTimeStep();
+        }
+    }
+
+    /*
+    Game actions which should be triggerd when a battle with a Hero is triggerd by an AI player
+    triggered by aipilot
+     */
+    private void battleWithHeroGameActions(SolGame game,SolShip thisShip, SolShip herosShip){
+        SolApplication Cmp = game.getCmp();
+        Vec2 distanceVector = SolMath.distVec(thisShip.getPosition(),herosShip.getPosition());
+        float distance = Math.abs(distanceVector.get(0)-distanceVector[2])
+        if(distanceVector.dst() < 1000){
+            Cmp.getMusicManager().playBattleMusic(Cmp.getOptions());
+
         }
     }
 
