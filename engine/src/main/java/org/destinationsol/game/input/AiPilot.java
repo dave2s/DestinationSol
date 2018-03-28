@@ -52,6 +52,7 @@ public class AiPilot implements Pilot {
     private float myBindAwait;
     private PlanetBind myPlanetBind;
     private float myReEquipAwait;
+    private boolean myBattleStarted;
 
     public AiPilot(MoveDestProvider destProvider, boolean collectsItems, Faction faction,
                    boolean shootAtObstacles, String mapHint, float detectionDist) {
@@ -97,8 +98,9 @@ public class AiPilot implements Pilot {
             }
             if (battle != null) {
                 //trigger game actions which occur during Hero vs AiPilot battle, triggered by AiPilot
-                if(nearestEnemy.getPilot().isPlayer()){
-                    this.battleWithHeroGameActions(game,ship,nearestEnemy);
+                if(nearestEnemy != null){
+                    if (nearestEnemy.getPilot().isPlayer())
+                        this.battleWithHeroGameActions(game,ship,nearestEnemy);
                 }
                 dest = myBattleDestProvider.getDest(ship, nearestEnemy, np, battle, game.getTimeStep(), canShootUnfixed, nearGround);
                 shouldStopNearDest = myBattleDestProvider.shouldStopNearDest();
@@ -113,9 +115,10 @@ public class AiPilot implements Pilot {
                 }
             } else {
                 //trigger game actions which occur after Hero vs AiPilot battle and Ai survives, triggered by AiPilot
-                if(!nearestEnemy.getPilot().isPlayer()){
-                    this.battleWithHeroOverGameActions(game,ship,nearestEnemy);
-                }
+               /* if(nearestEnemy != null){
+                    if (nearestEnemy.getPilot().isPlayer())
+                        battleWithHeroOverGameActions(game,ship,nearestEnemy);
+                }*/
                 dest = myDestProvider.getDest();
                 destSpd = myDestProvider.getDestSpd();
                 shouldStopNearDest = myDestProvider.shouldStopNearDest();
@@ -148,8 +151,13 @@ public class AiPilot implements Pilot {
     private void battleWithHeroGameActions(SolGame game,SolShip thisShip, SolShip herosShip){
         SolApplication Cmp = game.getCmp();
         float distance =  thisShip.getPosition().dst(herosShip.getPosition());
-        if(distance < 100){
-            Cmp.getMusicManager().playBattleMusic(Cmp.getOptions());
+        if((distance <= 5 ) && !myBattleStarted ){
+            myBattleStarted = true;
+            Cmp.getMusicManager().playBattleMusic(Cmp.getOptions(),1);
+        }
+        else if ((distance > 5) && myBattleStarted){
+            myBattleStarted = false;
+            Cmp.getMusicManager().stopBattleMusic(Cmp.getOptions(),1);
         }
     }
 
@@ -157,11 +165,11 @@ public class AiPilot implements Pilot {
     Game actions which should be triggerd when a battle with a Hero is triggerd by an AI player
     triggered by aipilot
  */
-    private void battleWithHeroOverActions(SolGame game,SolShip thisShip, SolShip herosShip){
+    private void battleWithHeroOverGameActions(SolGame game,SolShip thisShip, SolShip herosShip){
         SolApplication Cmp = game.getCmp();
         float distance =  thisShip.getPosition().dst(herosShip.getPosition());
-        if(distance > 100){
-            Cmp.getMusicManager().stopBattleMusic(Cmp.getOptions());
+        if(distance > 5.0){
+            Cmp.getMusicManager().stopBattleMusic(Cmp.getOptions(),1);
         }
     }
 
