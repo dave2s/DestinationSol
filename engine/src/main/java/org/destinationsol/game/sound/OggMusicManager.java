@@ -16,8 +16,13 @@
 package org.destinationsol.game.sound;
 
 import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.utils.Timer;
+import com.badlogic.gdx.utils.Timer.Task;
 import org.destinationsol.GameOptions;
 import org.destinationsol.assets.Assets;
+import org.destinationsol.game.SolGame;
+import org.destinationsol.game.screens.MainScreen;
+import org.destinationsol.game.screens.WarnDrawer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +39,11 @@ public class OggMusicManager {
     private final List<Music> battleMusic;
     private Music currentlyPlaying = null;
     private int battleMusicBucket = 0;
-    private final byte battleMusicBucketThreshold = 1; //A point at which
+    private final byte battleMusicBucketThreshold = 1; //A value of battleMusicBucket at which the battlemusic starts to play
+    private final long battleMusicSwitchOffDelay = 5; // Delay (seconds) to wait between switching Battle -> Game music;
+    private final long battleMusicSwitchOnDelay = 2; // Delay (seconds) to wait between switching Game -> Battle music;
+
+    private Timer timer = null;
 
     public OggMusicManager() {
         menuMusic = Assets.getMusic("engine:dreadnaught").getMusic();
@@ -75,69 +84,60 @@ public class OggMusicManager {
             } else {
                 playMusic(gameMusic.get(0), options);
             }
-        }//if battle music was playing, stop and play gamemusic
-        else if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)){
-            stopMusic();
-            playMusic(gameMusic.get(0), options);
         }
         else {
             playMusic(gameMusic.get(0), options);
         }
     }
 
-    private void playBattleMusic(final GameOptions options) {
-
-        //battlemusic playing, continue
-        if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
-            //do nothing
-            return;
-        }//gamemusic playing, stop music and start playing new music
-        else if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)){
-            stopMusic();
-        }
-        //else {
-        playMusic(battleMusic.get(0), options);
-        currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options)); //check whether this shouldn't rather call outside check for enemies
-        //}
-    }
-
-    public void playBattleMusic(final GameOptions options, int weight){
-        //increase queue
-        if ((this.battleMusicBucket + weight) < 0){
-            //TODO this might create a problem where a ship with high battleMusicWeigth gets truncated to int max
-            //TODO and then if it lives long enough, other ships which trigger stopBattleMusic might get it under the
-            //TODO battleMusicBucketThreshold even though the big ship still did not trigger stopBattleMusic and it's
-            //TODO Weight is higher than battleMusicBucketThreshold (in other words the battlemusic should still be playing)
-            this.battleMusicBucket = Integer.MAX_VALUE;
+    public void update(SolGame game, final GameOptions options) {
+        //play or stop battle music based on EnemyWarning
+        if (game.getScreens().mainScreen.isWarnUp(MainScreen.EnemyWarn.class, game)) {
+           if (!battleMusic.contains(currentlyPlaying)) {
+                if (timer == null) {
+                    timer = new Timer();
+                    timer.schedule(new Task() {
+                                       @Override
+                                       public void run() {
+                                           playBattleMusic(options, battleMusicBucketThreshold);
+                                           timer = null;
+                                       }
+                                   }
+                            , battleMusicSwitchOnDelay
+                    );
+                }
+                else;//nothing
+            } else {
+                //battle music is and should be playing;
+               //if timer is set to any task - start or stop battle music - dispose of it because it is and should be playing
+               if(timer != null) { timer = null;}
+            }
+            //playBattleMusic(options, battleMusicBucketThreshold);
+        //warning is not up, battle music should not be playing
         } else {
-            this.battleMusicBucket += weight;
-        }
-        //if greater than threshold - playBattleMusic - needs check for gameMusic playing - stop and play battle - should be in local playGameMusic
-        if(battleMusicBucket >= battleMusicBucketThreshold){
-            playBattleMusic(options);
+            if (battleMusic.contains(currentlyPlaying)) {
+                if (timer == null) {
+                    timer.schedule(new Task() {
+                                       @Override
+                                       public void run() {
+                                           playGameMusic(options);
+                                           timer = null;
+                                       }
+                                   }
+                            , battleMusicSwitchOffDelay        //    (delay)
+                            //, amtOfSec     //    (seconds)
+                    );
+                }
+                else; //nothing
+            }else if (currentlyPlaying == null){
+                playGameMusic(options);
+            }
+            else if (gameMusic.contains(currentlyPlaying)){
+                //do nothing
+            }else;
+            //playGameMusic(options);//stopBattleMusic(options, battleMusicBucketThreshold);
         }
     }
-    //weight is to represent (in future updates) the size of the ship that is calling this
-
-    public void stopBattleMusic(final GameOptions options, int weight){
-        //increase queue
-        if ((this.battleMusicBucket - weight) < 0){
-            this.battleMusicBucket = 0;
-        } else{
-            this.battleMusicBucket -= weight;
-        }
-        //if less than threshold - playGameMusic - needs check for battleMusic playing - stop and play game - should be in local playGameMusic
-        if(battleMusicBucket < battleMusicBucketThreshold){
-            playGameMusic(options);
-        }
-    }
-
-    public void playMusic(Music music, GameOptions options) {
-        currentlyPlaying = music;
-        currentlyPlaying.setVolume(options.musicVolumeMultiplier);
-        currentlyPlaying.play();
-    }
-
 
     /**
      * Stop playing all music.
@@ -151,4 +151,53 @@ public class OggMusicManager {
     public void resetVolume(GameOptions options) {
         currentlyPlaying.setVolume(options.musicVolumeMultiplier);
     }
+
+    private void playMusic(Music music, GameOptions options) {
+        currentlyPlaying = music;
+        currentlyPlaying.setVolume(options.musicVolumeMultiplier);
+        currentlyPlaying.play();
+    }
+
+    private void playBattleMusic(final GameOptions options, int weight){
+        //increase queue
+        if ((this.battleMusicBucket + weight) < 0){
+            //TODO this might create a problem where a ship with high battleMusicWeigth gets truncated to int max
+            //TODO and then if it lives long enough, other ships which trigger stopBattleMusic might get it under the
+            //TODO battleMusicBucketThreshold even though the big ship still did not trigger stopBattleMusic and it's
+            //TODO Weight is higher than battleMusicBucketThreshold (in other words the battlemusic should still be playing)
+            this.battleMusicBucket = Integer.MAX_VALUE;
+        } else {
+            this.battleMusicBucket += weight;
+        }
+        //if greater than threshold - playBattleMusic - needs check for gameMusic playing - stop and play battle - should be in local playGameMusic
+        if(shouldBattleMusicPlay()){
+            playBattleMusic(options);
+        }
+    }
+
+    private void playBattleMusic(final GameOptions options) {
+
+        //battlemusic playing, continue
+        if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
+            int index = battleMusic.indexOf(currentlyPlaying) + 1;
+            if (battleMusic.size() - 1 >= index) {
+                playMusic(battleMusic.get(index), options);
+                currentlyPlaying.setOnCompletionListener(music -> playBattleMusic(options));//check whether this shouldn't rather call outside check for enemies
+            } else {
+                playMusic(battleMusic.get(0), options);
+            }
+            return;
+        }//gamemusic playing, stop music and start playing new music
+        else if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)){
+            stopMusic();
+        }
+        playMusic(battleMusic.get(0), options);
+        currentlyPlaying.setOnCompletionListener(music -> playBattleMusic(options)); //check whether this shouldn't rather call outside check for enemies
+    }
+
+    //
+    private boolean shouldBattleMusicPlay(){
+        return (battleMusicBucket >= battleMusicBucketThreshold);
+    }
+
 }

@@ -528,6 +528,16 @@ public class MainScreen implements SolUiScreen {
         return cameraControl.isRight();
     }
 
+    //return whether a certain WarnDrawer is set to visible...needs to go trough the warndrawers list...not so fast
+    public <T extends WarnDrawer> boolean isWarnUp(Class<T> wdClass,SolGame game){
+        for (WarnDrawer wd : warnDrawers) {
+            if (wdClass.isInstance(wd)) {
+               return wd.shouldWarn(game);// return wd.drawPerc > 0 ? true : false;
+            }
+        }
+        return false;
+    }
+
     public static class TextPlace {
         public final Color color;
         public String text;
@@ -568,7 +578,7 @@ public class MainScreen implements SolUiScreen {
         }
     }
 
-    private static class EnemyWarn extends WarnDrawer {
+    public static class EnemyWarn extends WarnDrawer {
         public EnemyWarn(float r) {
             super(r, "Dangerous\nEnemy");
         }

@@ -151,6 +151,8 @@ public class SolApplication implements ApplicationListener {
 
         if (solGame != null) {
             solGame.update();
+
+            musicManager.update(solGame,options);
         }
 
         SolMath.checkVectorsTaken(null);
