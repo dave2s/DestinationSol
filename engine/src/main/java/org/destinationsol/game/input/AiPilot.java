@@ -95,11 +95,6 @@ public class AiPilot implements Pilot {
                 battle = myDestProvider.shouldManeuver(canShoot, nearestEnemy, nearGround);
             }
             if (battle != null) {
-                //trigger game actions which occur during Hero vs AiPilot battle, triggered by AiPilot
-                /*if(nearestEnemy != null){
-                    if (nearestEnemy.getPilot().isPlayer())
-                        this.battleWithHeroGameActions(game,ship,nearestEnemy);
-                }*/
                 dest = myBattleDestProvider.getDest(ship, nearestEnemy, np, battle, game.getTimeStep(), canShootUnfixed, nearGround);
                 shouldStopNearDest = myBattleDestProvider.shouldStopNearDest();
                 destSpd = nearestEnemy.getSpd();

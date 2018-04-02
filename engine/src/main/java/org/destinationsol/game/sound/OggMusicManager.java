@@ -43,7 +43,12 @@ public class OggMusicManager {
     private final long battleMusicSwitchOffDelay = 5; // Delay (seconds) to wait between switching Battle -> Game music;
     private final long battleMusicSwitchOnDelay = 2; // Delay (seconds) to wait between switching Game -> Battle music;
 
-    private Timer timer = null;
+    private int lastBattMusicIndex = 0; //for battle music
+    private int lastGameMusicIndex = 0; //for game music
+
+    private Timer timer;
+    private Task gameMusicTask;
+    private Task battleMusicTask;
 
     public OggMusicManager() {
         menuMusic = Assets.getMusic("engine:dreadnaught").getMusic();
@@ -51,89 +56,108 @@ public class OggMusicManager {
 
         gameMusic = new ArrayList<>();
         battleMusic = new ArrayList<>();
+
         gameMusic.add(Assets.getMusic("engine:cimmerianDawn").getMusic());
         gameMusic.add(Assets.getMusic("engine:intoTheDark").getMusic());
         gameMusic.add(Assets.getMusic("engine:spaceTheatre").getMusic());
         battleMusic.add(Assets.getMusic("engine:battle/defenseLine").getMusic());
         battleMusic.add(Assets.getMusic("engine:battle/powerBots").getMusic());
+
+        timer = new Timer();
+        gameMusicTask = new Task(){public void run(){}};
+        battleMusicTask = new Task(){public void run(){}};
+        //musicSwitch;
     }
 
     /**
      * Start playing the music menu from the beginning of the track. The menu music loops continuously.
      */
     public void playMenuMusic(GameOptions options) {
+       // saveCurrentlyPlayingPosition();
+       // stopMusic();
+        pauseMusic();
         if (currentlyPlaying != null) {
             if (currentlyPlaying != menuMusic || !currentlyPlaying.isPlaying()) {
-                stopMusic();
                 playMusic(menuMusic, options);
             }
         } else {
-            stopMusic();
             playMusic(menuMusic, options);
         }
     }
 
     public void playGameMusic(final GameOptions options) {
-        stopMusic();
+       // saveCurrentlyPlayingPosition();
+       // stopMusic();
+        pauseMusic();
         if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)) {
-            int index = gameMusic.indexOf(currentlyPlaying) + 1;
-            if (gameMusic.size() - 1 >= index) {
-                playMusic(gameMusic.get(index), options);
-                currentlyPlaying.setOnCompletionListener(music -> playGameMusic(options));//check whether this shouldn't rather call outside check for enemies
 
-            } else {
-                playMusic(gameMusic.get(0), options);
-            }
+                playMusic(gameMusic.get(lastGameMusicIndex), options);
+                currentlyPlaying.setOnCompletionListener(music -> playNextGameMusic(options));
+
         }
         else {
-            playMusic(gameMusic.get(0), options);
+            playMusic(gameMusic.get(lastBattMusicIndex), options);
         }
+    }
+
+    public void playBattleMusic(final GameOptions options) {
+        pauseMusic();
+        //battlemusic playing, continue
+        if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
+            int index = battleMusic.indexOf(currentlyPlaying) + 1;
+            if (battleMusic.size() - 1 >= index) {
+                playMusic(battleMusic.get(index), options);
+                currentlyPlaying.setOnCompletionListener(music -> playNextBattleMusic(options));//check whether this shouldn't rather call outside check for enemies
+            } else {
+                playMusic(battleMusic.get(0), options);
+            }
+            return;
+        }//gamemusic playing, stop music and start playing new music
+        else if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)){
+            pauseMusic();
+        }
+        playMusic(battleMusic.get(0), options);
+        currentlyPlaying.setOnCompletionListener(music -> playBattleMusic(options)); //check whether this shouldn't rather call outside check for enemies
     }
 
     public void update(SolGame game, final GameOptions options) {
         //play or stop battle music based on EnemyWarning
         if (game.getScreens().mainScreen.isWarnUp(MainScreen.EnemyWarn.class, game)) {
            if (!battleMusic.contains(currentlyPlaying)) {
-                if (timer == null) {
-                    timer = new Timer();
-                    timer.schedule(new Task() {
+                if (!battleMusicTask.isScheduled()) {
+                    //create new task to play battle music
+                    battleMusicTask = new Task() {
                                        @Override
                                        public void run() {
                                            playBattleMusic(options, battleMusicBucketThreshold);
-                                           timer = null;
                                        }
-                                   }
-                            , battleMusicSwitchOnDelay
-                    );
+                    };
+                    //schedule battle music in bMSOnDelay seconds
+                    timer.schedule(battleMusicTask,battleMusicSwitchOnDelay);
                 }
                 else;//nothing
-            } else {
-                //battle music is and should be playing;
-               //if timer is set to any task - start or stop battle music - dispose of it because it is and should be playing
-               if(timer != null) { timer = null;}
+            }else if (battleMusic.contains(currentlyPlaying) && gameMusicTask.isScheduled()) {
+               gameMusicTask.cancel(); //battle music is and should be playing but gameMusic is planned for future so we need to cancel it
             }
-            //playBattleMusic(options, battleMusicBucketThreshold);
         //warning is not up, battle music should not be playing
         } else {
             if (battleMusic.contains(currentlyPlaying)) {
-                if (timer == null) {
-                    timer.schedule(new Task() {
-                                       @Override
-                                       public void run() {
-                                           playGameMusic(options);
-                                           timer = null;
-                                       }
-                                   }
-                            , battleMusicSwitchOffDelay        //    (delay)
-                            //, amtOfSec     //    (seconds)
-                    );
+                if (!gameMusicTask.isScheduled()) {
+                    //create new task to play game music
+                    gameMusicTask = new Task() {
+                        @Override
+                        public void run() {
+                            playGameMusic(options);
+                        }
+                    };
+                    //schedule game music in bMSOffDelay seconds
+                    timer.schedule(gameMusicTask, battleMusicSwitchOffDelay);
                 }
                 else; //nothing
+            }else if (gameMusic.contains(currentlyPlaying) && battleMusicTask.isScheduled()){
+                battleMusicTask.cancel();//game music is and should be playing but battleMusic is planned for future so we need to cancel it
             }else if (currentlyPlaying == null){
                 playGameMusic(options);
-            }
-            else if (gameMusic.contains(currentlyPlaying)){
-                //do nothing
             }else;
             //playGameMusic(options);//stopBattleMusic(options, battleMusicBucketThreshold);
         }
@@ -144,12 +168,42 @@ public class OggMusicManager {
      */
     public void stopMusic() {
         if (currentlyPlaying != null) {
+            //saveCurrentlyPlayingPosition();
             currentlyPlaying.stop();
         }
     }
 
+    /**
+     * Pause currently playing music remembering it's position
+     */
+    public void pauseMusic(){
+        if(currentlyPlaying != null) {
+           currentlyPlaying.pause();
+        }
+    }
+
+    /**
+     * Reset volume for the currently playing music according to SolGame musicVolumeMultiplier
+     * @param options - Options of the SolGame
+     */
     public void resetVolume(GameOptions options) {
         currentlyPlaying.setVolume(options.musicVolumeMultiplier);
+    }
+
+    private void playNextGameMusic(GameOptions options){
+        lastGameMusicIndex = gameMusic.indexOf(currentlyPlaying) + 1;
+        if (gameMusic.size() - 1 >= lastGameMusicIndex) {
+            lastGameMusicIndex = 0;
+        }
+        playGameMusic(options);
+    }
+
+    private void playNextBattleMusic(GameOptions  options){
+        lastBattMusicIndex = battleMusic.indexOf(currentlyPlaying) + 1;
+        if (battleMusic.size() - 1 >= lastBattMusicIndex) {
+            lastBattMusicIndex = 0;
+        }
+        playBattleMusic(options);
     }
 
     private void playMusic(Music music, GameOptions options) {
@@ -161,10 +215,6 @@ public class OggMusicManager {
     private void playBattleMusic(final GameOptions options, int weight){
         //increase queue
         if ((this.battleMusicBucket + weight) < 0){
-            //TODO this might create a problem where a ship with high battleMusicWeigth gets truncated to int max
-            //TODO and then if it lives long enough, other ships which trigger stopBattleMusic might get it under the
-            //TODO battleMusicBucketThreshold even though the big ship still did not trigger stopBattleMusic and it's
-            //TODO Weight is higher than battleMusicBucketThreshold (in other words the battlemusic should still be playing)
             this.battleMusicBucket = Integer.MAX_VALUE;
         } else {
             this.battleMusicBucket += weight;
@@ -175,27 +225,6 @@ public class OggMusicManager {
         }
     }
 
-    private void playBattleMusic(final GameOptions options) {
-
-        //battlemusic playing, continue
-        if (currentlyPlaying != null && battleMusic.contains(currentlyPlaying)) {
-            int index = battleMusic.indexOf(currentlyPlaying) + 1;
-            if (battleMusic.size() - 1 >= index) {
-                playMusic(battleMusic.get(index), options);
-                currentlyPlaying.setOnCompletionListener(music -> playBattleMusic(options));//check whether this shouldn't rather call outside check for enemies
-            } else {
-                playMusic(battleMusic.get(0), options);
-            }
-            return;
-        }//gamemusic playing, stop music and start playing new music
-        else if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)){
-            stopMusic();
-        }
-        playMusic(battleMusic.get(0), options);
-        currentlyPlaying.setOnCompletionListener(music -> playBattleMusic(options)); //check whether this shouldn't rather call outside check for enemies
-    }
-
-    //
     private boolean shouldBattleMusicPlay(){
         return (battleMusicBucket >= battleMusicBucketThreshold);
     }
