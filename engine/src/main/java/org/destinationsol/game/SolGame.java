@@ -463,6 +463,8 @@ public class SolGame {
         }
         // TODO: Consider whether we want to treat respawn as a newGame or not.
         createPlayer(null, true);
+
+        getCmp().getMusicManager().playGameMusic(getCmp().getOptions());
     }
 
     public FactionManager getFactionMan() {

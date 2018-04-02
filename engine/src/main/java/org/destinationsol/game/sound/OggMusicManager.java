@@ -32,6 +32,10 @@ import java.util.List;
  *
  * @author SimonC4
  * @author Rulasmur
+ *
+ * v1.1 2018
+ * Battle music additions and refactorization
+ * @author Dave2S
  */
 public class OggMusicManager {
     private final Music menuMusic;
@@ -73,8 +77,6 @@ public class OggMusicManager {
      * Start playing the music menu from the beginning of the track. The menu music loops continuously.
      */
     public void playMenuMusic(GameOptions options) {
-       // saveCurrentlyPlayingPosition();
-       // stopMusic();
         pauseMusic();
         if (currentlyPlaying != null) {
             if (currentlyPlaying != menuMusic || !currentlyPlaying.isPlaying()) {
@@ -83,17 +85,17 @@ public class OggMusicManager {
         } else {
             playMusic(menuMusic, options);
         }
+        currentlyPlaying.setOnCompletionListener(music -> playMenuMusic(options));
     }
 
+    /**
+     * Plays game music
+     * @param options
+     */
     public void playGameMusic(final GameOptions options) {
         pauseMusic();
-        if (currentlyPlaying != null && gameMusic.contains(currentlyPlaying)) {
-                playMusic(gameMusic.get(lastGameMusicIndex), options);
-                currentlyPlaying.setOnCompletionListener(music -> playNextGameMusic(options));
-        }
-        else {
-            playMusic(gameMusic.get(lastGameMusicIndex), options);
-        }
+        playMusic(gameMusic.get(lastGameMusicIndex), options);
+        currentlyPlaying.setOnCompletionListener(music -> playNextGameMusic(options));
     }
 
     /**
@@ -188,6 +190,10 @@ public class OggMusicManager {
         currentlyPlaying.setVolume(options.musicVolumeMultiplier);
     }
 
+    /**
+     * Callback function for playing next game music which is only called by music's on completion callback
+     * @param options
+     */
     private void playNextGameMusic(GameOptions options){
         lastGameMusicIndex = gameMusic.indexOf(currentlyPlaying) + 1;
         if (gameMusic.size() - 1 >= lastGameMusicIndex) {
@@ -197,6 +203,10 @@ public class OggMusicManager {
         playGameMusic(options);
     }
 
+    /**
+     * Callback function for playing next battle music which is only called by music's on completion callback
+     * @param options
+     */
     private void playNextBattleMusic(GameOptions  options){
         lastBattMusicIndex = battleMusic.indexOf(currentlyPlaying) + 1;
         if (battleMusic.size() - 1 >= lastBattMusicIndex) {
@@ -206,12 +216,24 @@ public class OggMusicManager {
         playBattleMusic(options);
     }
 
+    /**
+     * Core function of this class. Updates instance's attribute currentlyPlaying to @music, resets volume
+     * for the acutal Music and starts the playback by calling Music.play()
+     * @param music to start playing
+     * @param options
+     */
     private void playMusic(Music music, GameOptions options) {
         currentlyPlaying = music;
         currentlyPlaying.setVolume(options.musicVolumeMultiplier);
         currentlyPlaying.play();
     }
 
+    /**
+     * Helper method to call playBattleMusic(GameOptions options) which is currently not needed but might be
+     * in a future to distinguish between callers by Weight
+     * @param options GameOptions options
+     * @param weight Integer, currently always 1.
+     */
     private void playBattleMusic(final GameOptions options, int weight){
         //increase queue
         if ((this.battleMusicBucket + weight) < 0){
@@ -225,6 +247,12 @@ public class OggMusicManager {
         }
     }
 
+    /**
+     * Helper method for playing battle music. Compares battleMusicBucket to battleMusicBucketThreshold and returns
+     * battleMusicBucket >= battleMusicBucketThreshold. If battleMusicBucket is greater or equal, BattleMusic should
+     * be playing.
+     * @return
+     */
     private boolean shouldBattleMusicPlay(){
         return (battleMusicBucket >= battleMusicBucketThreshold);
     }
