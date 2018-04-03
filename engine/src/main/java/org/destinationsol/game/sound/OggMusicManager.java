@@ -196,7 +196,7 @@ public class OggMusicManager {
      */
     private void playNextGameMusic(GameOptions options){
         lastGameMusicIndex = gameMusic.indexOf(currentlyPlaying) + 1;
-        if (gameMusic.size() - 1 >= lastGameMusicIndex) {
+        if (lastGameMusicIndex > gameMusic.size() - 1 ) {
             lastGameMusicIndex = 0;
         }
         stopMusic();
@@ -209,7 +209,7 @@ public class OggMusicManager {
      */
     private void playNextBattleMusic(GameOptions  options){
         lastBattMusicIndex = battleMusic.indexOf(currentlyPlaying) + 1;
-        if (battleMusic.size() - 1 >= lastBattMusicIndex) {
+        if (lastBattMusicIndex > battleMusic.size() - 1) {
             lastBattMusicIndex = 0;
         }
         stopMusic();
