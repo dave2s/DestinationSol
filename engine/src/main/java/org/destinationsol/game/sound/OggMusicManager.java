@@ -124,7 +124,7 @@ public class OggMusicManager {
                     battleMusicTask = new Task() {
                                        @Override
                                        public void run() {
-                                           playBattleMusic(options, battleMusicBucketThreshold);
+                                           playBattleMusic(options);
                                        }
                     };
                     //schedule battle music in bMSOnDelay seconds
@@ -229,6 +229,7 @@ public class OggMusicManager {
     }
 
     /**
+     * Not In Use
      * Helper method to call playBattleMusic(GameOptions options) which is currently not needed but might be
      * in a future to distinguish between callers by Weight
      * @param options GameOptions options

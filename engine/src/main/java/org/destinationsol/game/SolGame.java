@@ -463,7 +463,7 @@ public class SolGame {
         }
         // TODO: Consider whether we want to treat respawn as a newGame or not.
         createPlayer(null, true);
-
+        // Force game music (battle music might overlap because of the battle music off delay)
         getCmp().getMusicManager().playGameMusic(getCmp().getOptions());
     }
 
